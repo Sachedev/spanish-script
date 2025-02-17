@@ -93,6 +93,8 @@ export function tokenize(input: string): Token[] {
   let line = 1
   let column = 1
 
+  let lastChar: string | undefined
+
   const chars: string[] = []
   // error.addEventListener('error', () => {
   //   console.log(chars.join(''))
@@ -108,6 +110,7 @@ export function tokenize(input: string): Token[] {
     }
 
     chars.push(char!)
+    lastChar = char
 
     return char!
   }
@@ -128,6 +131,70 @@ export function tokenize(input: string): Token[] {
   }
 
   while (src.length > 0) {
+    // For more than one character
+    // Strings
+    if (src[0] === '"') {
+      shift()
+      let str = ''
+      const loc = { line: line, column: column }
+      while (src[0] !== '"') {
+        if (src[0] == null) {
+          error.printError(
+            ErrorType.SyntaxError,
+            'Se deben cerrar los textos con las comillas dobles ("texto").',
+            loc
+          )
+        }
+
+        if (src[0] === '\\') {
+          shift()
+          const strEscape = stringEscapes[src[0]]
+          if (strEscape) {
+            str += strEscape
+            shift()
+            continue
+          }
+        }
+        str += shift()
+      }
+      shift()
+
+      tokens.push(token(str, TokenType.TEXT))
+      continue
+    }
+    // Alpha
+    if (isAlpha(src[0])) {
+      let str = ''
+      while (isAlpha(src[0]) || isDigit(src[0])) {
+        str += shift()
+      }
+      const tokenType = KEYWORDS[str as keyof typeof KEYWORDS]
+      if (tokenType) {
+        tokens.push(token(str, tokenType))
+        continue
+      }
+
+      tokens.push(token(str, TokenType.IDENTIFIER))
+      continue
+    }
+    // Digit
+    if (
+      isDigit(src[0]) ||
+      (!isDigit(lastChar) && src[0] === '-' && isDigit(src[1]))
+    ) {
+      let str = src[0] === '-' ? shift() : ''
+      while (isDigit(src[0]) || (src[0] === '.' && isDigit(src[1]))) {
+        str += shift()
+      }
+      tokens.push(token(str, TokenType.NUMBER))
+      continue
+    }
+    // Skippable
+    if (isSkippable(src[0])) {
+      shift()
+      continue
+    }
+
     // Multi character
     if (src[0] === '>' && src[1] === '=') {
       shift()
@@ -267,67 +334,6 @@ export function tokenize(input: string): Token[] {
     ) {
       tokens.push(token(shift(), TokenType.BYNARY_OPERATOR))
 
-      continue
-    }
-
-    // For more than one character
-    // Strings
-    if (src[0] === '"') {
-      shift()
-      let str = ''
-      const loc = { line: line, column: column }
-      while (src[0] !== '"') {
-        if (src[0] == null) {
-          error.printError(
-            ErrorType.SyntaxError,
-            'Se deben cerrar los textos con las comillas dobles ("texto").',
-            loc
-          )
-        }
-
-        if (src[0] === '\\') {
-          shift()
-          const strEscape = stringEscapes[src[0]]
-          if (strEscape) {
-            str += strEscape
-            shift()
-            continue
-          }
-        }
-        str += shift()
-      }
-      shift()
-
-      tokens.push(token(str, TokenType.TEXT))
-      continue
-    }
-    // Alpha
-    if (isAlpha(src[0])) {
-      let str = ''
-      while (isAlpha(src[0]) || isDigit(src[0])) {
-        str += shift()
-      }
-      const tokenType = KEYWORDS[str as keyof typeof KEYWORDS]
-      if (tokenType) {
-        tokens.push(token(str, tokenType))
-        continue
-      }
-
-      tokens.push(token(str, TokenType.IDENTIFIER))
-      continue
-    }
-    // Digit
-    if (isDigit(src[0])) {
-      let str = ''
-      while (isDigit(src[0]) || (src[0] === '.' && isDigit(src[1]))) {
-        str += shift()
-      }
-      tokens.push(token(str, TokenType.NUMBER))
-      continue
-    }
-    // Skippable
-    if (isSkippable(src[0])) {
-      shift()
       continue
     }
 
