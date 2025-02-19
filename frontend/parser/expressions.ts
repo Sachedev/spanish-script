@@ -2,7 +2,13 @@ import { error, ErrorType } from '../../error/error_manager.ts'
 import { Property } from '../ast.ts'
 import { Expression, Identifier, ParameterDeclaration } from '../ast.ts'
 import { Token, TokenType } from '../lexer.ts'
-import { eof, expectToken, shift, unexpectToken } from './parser.ts'
+import {
+  eof,
+  expectToken,
+  oldExpectToken,
+  shift,
+  unexpectToken,
+} from './parser.ts'
 import { Statements } from './statements.ts'
 
 export class ExpressionsParser {
@@ -91,7 +97,7 @@ export class ExpressionsParser {
           end: value.end,
         })
         if ((tokens[0].type as TokenType) !== TokenType.CLOSE_BRACE) {
-          expectToken(
+          oldExpectToken(
             TokenType.COMMA,
             'Entre cada propiedad de un objeto se espera una coma.'
           )
@@ -105,7 +111,7 @@ export class ExpressionsParser {
           end: key.end,
         })
         if ((tokens[0].type as TokenType) !== TokenType.CLOSE_BRACE) {
-          expectToken(
+          oldExpectToken(
             TokenType.COMMA,
             'Entre cada propiedad de un objeto se espera una coma.'
           )
@@ -113,7 +119,7 @@ export class ExpressionsParser {
       }
     }
 
-    const { end } = expectToken(
+    const { end } = oldExpectToken(
       TokenType.CLOSE_BRACE,
       'Al final de un objeto se espera un paréntesis de cierre "}".'
     )
@@ -139,14 +145,31 @@ export class ExpressionsParser {
     if (tokens[0].type !== TokenType.FUN) {
       return this.parseBinaryExpression(tokens)
     }
-    const { start } = expectToken(TokenType.FUN, 'Se esperaba una función.')
-    unexpectToken(TokenType.OPEN_PAREN)
+    const keyword = shift()!
+
+    expectToken(TokenType.OPEN_PAREN, 'Se esperaba un paréntesis de apertura.')
     const params: ParameterDeclaration[] = []
-    while ((tokens[0].type as TokenType) !== TokenType.CLOSE_PAREN) {
-      unexpectToken(TokenType.IDENTIFIER, false)
-      const type = this.parsePrimaryExpression(tokens) as Identifier
-      unexpectToken(TokenType.IDENTIFIER, false)
-      const param = this.parsePrimaryExpression(tokens) as Identifier
+    while ((tokens[0] as Token).type !== TokenType.CLOSE_PAREN) {
+      expectToken(
+        TokenType.IDENTIFIER,
+        'No se pudo determinar el nombre del parámetro.',
+        false
+      )
+      const param = ExpressionsParser.parsePrimaryExpression(
+        tokens
+      ) as Identifier
+      expectToken(
+        TokenType.COLON,
+        'Después del nombre del parámetro se esperaba un signo de dos puntos (:).'
+      )
+      expectToken(
+        TokenType.IDENTIFIER,
+        'No se pudo determinar el tipo del parámetro.',
+        false
+      )
+      const type = ExpressionsParser.parsePrimaryExpression(
+        tokens
+      ) as Identifier
       params.push({
         type: 'ParameterDeclaration',
         identifier: param,
@@ -157,23 +180,37 @@ export class ExpressionsParser {
       if ((tokens[0].type as TokenType) !== TokenType.CLOSE_PAREN) {
         expectToken(
           TokenType.COMMA,
-          'Entre cada parámetro de una función se espera una coma.'
+          'Entre cada parámetro de una función se espera una coma (,).'
         )
       }
     }
-    const { end } = expectToken(
+    expectToken(
       TokenType.CLOSE_PAREN,
       'Al final de una declaración de función se espera un paréntesis de cierre ")".'
     )
+
+    expectToken(
+      TokenType.COLON,
+      'Después del paréntesis de apertura se esperaba un signo de dos puntos (:).'
+    )
+    expectToken(
+      TokenType.IDENTIFIER,
+      'No se pudo determinar el tipo que devuelve de la función.',
+      false
+    )
+    const returnType = ExpressionsParser.parsePrimaryExpression(
+      tokens
+    ) as Identifier
 
     const body = Statements.parseBlockStatement(tokens, 'function_block')
 
     return {
       type: 'FunctionLiteral',
       params,
+      returnType,
       body,
-      start,
-      end,
+      start: keyword.start,
+      end: body.end,
     }
   }
 
@@ -312,7 +349,7 @@ export class ExpressionsParser {
     while ((tokens[0].type as TokenType) !== TokenType.CLOSE_PAREN) {
       args.push(this.parseExpression(tokens))
       if ((tokens[0].type as TokenType) !== TokenType.CLOSE_PAREN) {
-        expectToken(
+        oldExpectToken(
           TokenType.COMMA,
           'Entre cada argumento de una función se espera una coma.'
         )

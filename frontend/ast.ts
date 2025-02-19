@@ -38,6 +38,7 @@ export interface FunctionDeclaration extends BaseNode {
   id: Identifier
   params: ParameterDeclaration[]
   body: BlockStatement
+  returnType: Identifier
 }
 
 export interface IfStatement extends BaseNode {
@@ -111,6 +112,7 @@ export interface FunctionLiteral extends BaseNode {
   type: 'FunctionLiteral'
   params: ParameterDeclaration[]
   body: BlockStatement
+  returnType: Identifier
 }
 
 export interface Property extends BaseNode {

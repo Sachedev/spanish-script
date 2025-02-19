@@ -8,7 +8,16 @@ class VariableBase {
   constructor(name: string, type: ValuesType, value?: Value) {
     this.name = name
     this.type = type
-    this.value = value
+
+    if (value) {
+      if (value.type !== type) {
+        error.printError(
+          ErrorType.TypeError,
+          `No se puede asignar un valor de diferente tipo. La variable o constante tiene el tipo ${type} pero se intenta asignar un valor de tipo ${value.type}.`
+        )
+      }
+      this.value = value
+    }
   }
 
   get() {
@@ -22,8 +31,15 @@ class VariableBase {
 
 export class Constant extends VariableBase {
   declare value: Value
-  constructor(name: string, type: ValuesType, value: Value) {
+  constructor(name: string, type: ValuesType, value?: Value) {
     super(name, type, value)
+
+    if (!value) {
+      return error.printError(
+        ErrorType.TypeError,
+        `No se puede declarar una constante sin un valor.`
+      )
+    }
   }
 
   override get(): Value {

@@ -2,6 +2,7 @@ import { error, ErrorType } from '../../error/error_manager.ts'
 import {
   BreakStatement,
   ContinueStatement,
+  Expression,
   FunctionDeclaration,
   Identifier,
   ParameterDeclaration,
@@ -19,8 +20,9 @@ import { ExpressionsParser } from './expressions.ts'
 import {
   unexpectToken,
   parserExpectedError,
-  expectToken,
+  oldExpectToken,
   shift,
+  expectToken,
 } from './parser.ts'
 
 export class Statements {
@@ -66,7 +68,7 @@ export class Statements {
    * @param tokens Are the tokens to parse
    * @returns Return an expression statement
    * @example
-   * imprimir(10); // <-- expression statement
+   * "Hola Mundo"; // <-- expression statement
    */
   static parseExpressionStatement(tokens: Token[]): Statement {
     const expression = ExpressionsParser.parseExpression(tokens)
@@ -84,10 +86,12 @@ export class Statements {
    * @param tokens Are the tokens to parse
    * @returns Return a variable declaration
    * @example
-   * var a = 10; // <-- variable declaration
-   * const b = 10; // <-- variable declaration
-   * var Number c = 10; // <-- variable declaration
-   * var Texto d; // <-- variable declaration
+   * var var_1 = 1;  // <-- variable declaration
+   * var var_2: Numero = 2;  // <-- variable declaration
+   * var var_3: Texto;  // <-- variable declaration
+   *
+   * const const_1 = 1;  // <-- constant declaration
+   * const const_2: Numero = 2;  // <-- constant declaration
    */
   static parseVariableDeclaration(tokens: Token[]): Statement {
     // (var|const) identifier = expression;
@@ -96,55 +100,43 @@ export class Statements {
     const keyword = shift()!
     const kind = keyword.value as 'var' | 'const'
 
-    unexpectToken(TokenType.IDENTIFIER, false) // Type or identifier
-
-    const ident1 = ExpressionsParser.parsePrimaryExpression(
+    unexpectToken(TokenType.IDENTIFIER, false) // identifier
+    const identifier = ExpressionsParser.parsePrimaryExpression(
       tokens
     ) as Identifier
 
-    // = expression;
+    let typeAnnotation: Identifier | undefined
+    if (tokens[0].type === TokenType.COLON) {
+      unexpectToken(TokenType.COLON) // :
+      const type = ExpressionsParser.parsePrimaryExpression(
+        tokens
+      ) as Identifier // Type
+      typeAnnotation = type
+    }
+
+    let value: Expression | undefined
     if (tokens[0].type === TokenType.EQUALS) {
-      unexpectToken(TokenType.EQUALS)
-      const value = ExpressionsParser.parseExpression(tokens)
-
-      return {
-        type: 'VariableDeclaration',
-        kind,
-        identifier: ident1,
-        value,
-        start: keyword.start,
-        end: this._parseEndStatement().end,
-      }
+      unexpectToken(TokenType.EQUALS) // =
+      value = ExpressionsParser.parseExpression(tokens) // expression
+    } else if (!typeAnnotation) {
+      return error.printError(
+        ErrorType.SyntaxError,
+        'No se puede declarar una variable sin valor sin un tipo.',
+        identifier.start,
+        identifier.end
+      )
     }
 
-    // identifier = expression;
-    unexpectToken(TokenType.IDENTIFIER, false)
-    const ident2 = ExpressionsParser.parsePrimaryExpression(
-      tokens
-    ) as Identifier
-
-    if (kind === 'var' && (tokens[0].type as TokenType) !== TokenType.EQUALS) {
-      return {
-        type: 'VariableDeclaration',
-        kind,
-        typeAnnotation: ident1,
-        identifier: ident2,
-        start: keyword.start,
-        end: this._parseEndStatement().end,
-      }
-    }
-
-    unexpectToken(TokenType.EQUALS)
-    const value = ExpressionsParser.parseExpression(tokens)
+    const { end } = this._parseEndStatement() // ;
 
     return {
       type: 'VariableDeclaration',
       kind,
-      typeAnnotation: ident1,
-      identifier: ident2,
+      typeAnnotation,
+      identifier,
       value,
       start: keyword.start,
-      end: this._parseEndStatement().end,
+      end,
     }
   }
 
@@ -158,22 +150,41 @@ export class Statements {
    * } // <-- function declaration
    */
   static parseFunctionDeclaration(tokens: Token[]): FunctionDeclaration {
-    const keyword = unexpectToken(TokenType.FUN)
+    const keyword = shift()!
 
-    unexpectToken(TokenType.IDENTIFIER, false)
+    expectToken(
+      TokenType.IDENTIFIER,
+      'No se pudo determinar el nombre de la función.',
+      false
+    )
     const identifier = ExpressionsParser.parsePrimaryExpression(
       tokens
     ) as Identifier
 
-    unexpectToken(TokenType.OPEN_PAREN)
+    expectToken(
+      TokenType.OPEN_PAREN,
+      'Después del nombre de la función se esperaba un paréntesis de apertura.'
+    )
     const params: ParameterDeclaration[] = []
     while (tokens[0].type !== TokenType.CLOSE_PAREN) {
-      unexpectToken(TokenType.IDENTIFIER, false)
-      const type = ExpressionsParser.parsePrimaryExpression(
+      expectToken(
+        TokenType.IDENTIFIER,
+        'No se pudo determinar el nombre del parámetro.',
+        false
+      )
+      const param = ExpressionsParser.parsePrimaryExpression(
         tokens
       ) as Identifier
-      unexpectToken(TokenType.IDENTIFIER, false)
-      const param = ExpressionsParser.parsePrimaryExpression(
+      expectToken(
+        TokenType.COLON,
+        'Después del nombre del parámetro se esperaba un signo de dos puntos (:).'
+      )
+      expectToken(
+        TokenType.IDENTIFIER,
+        'No se pudo determinar el tipo del parámetro.',
+        false
+      )
+      const type = ExpressionsParser.parsePrimaryExpression(
         tokens
       ) as Identifier
       params.push({
@@ -186,7 +197,7 @@ export class Statements {
       if ((tokens[0].type as TokenType) !== TokenType.CLOSE_PAREN) {
         expectToken(
           TokenType.COMMA,
-          'Entre cada parámetro de una función se espera una coma.'
+          'Entre cada parámetro de una función se espera una coma (,).'
         )
       }
     }
@@ -195,12 +206,26 @@ export class Statements {
       'Al final de una declaración de función se espera un paréntesis de cierre ")".'
     )
 
+    expectToken(
+      TokenType.COLON,
+      'Después del paréntesis de apertura se esperaba un signo de dos puntos (:).'
+    )
+    expectToken(
+      TokenType.IDENTIFIER,
+      'No se pudo determinar el tipo que devuelve de la función.',
+      false
+    )
+    const returnType = ExpressionsParser.parsePrimaryExpression(
+      tokens
+    ) as Identifier
+
     const body: Node = Statements.parseBlockStatement(tokens, 'function_block')
 
     return {
       type: 'FunctionDeclaration',
       id: identifier,
       params,
+      returnType,
       body,
       start: keyword.start,
       end: body.end,
@@ -380,7 +405,7 @@ export class Statements {
    * const a = 10; // <-- semicolon
    */
   static _parseEndStatement(): Token {
-    return expectToken(
+    return oldExpectToken(
       TokenType.SEMICOLON,
       'Se esperaba un punto y coma al final de la declaración.'
     )

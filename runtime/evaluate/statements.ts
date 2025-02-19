@@ -132,6 +132,7 @@ export function evaluate_function_declaration(
       }),
       declarationEnv: env,
       body: declaration.body.body,
+      returnType: typeToValuesType(declaration.returnType.name),
     },
   }
 

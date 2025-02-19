@@ -49,7 +49,7 @@ export function unexpectToken(expectedToken: TokenType, deleteToken = true) {
   return tokens[0]
 }
 
-export function expectToken(expectedToken: TokenType, message: string) {
+export function oldExpectToken(expectedToken: TokenType, message: string) {
   if (tokens[0].type !== expectedToken) {
     error.printError(
       ErrorType.SyntaxError,
@@ -58,6 +58,23 @@ export function expectToken(expectedToken: TokenType, message: string) {
     )
   }
   return shift()!
+}
+
+export function expectToken(
+  expectedToken: TokenType,
+  message: string,
+  deleteToken = true
+) {
+  if (tokens[0].type !== expectedToken) {
+    return error.printError(
+      ErrorType.SyntaxError,
+      message,
+      tokens[0].start,
+      tokens[0].end
+    )
+  }
+  if (deleteToken) return shift()!
+  return tokens[0]
 }
 
 export function eof(tokens: Token[]) {

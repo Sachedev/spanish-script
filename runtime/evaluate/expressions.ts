@@ -16,7 +16,13 @@ import {
 } from '../../frontend/lexer.ts'
 import Environment from '../environment.ts'
 import { evaluate } from '../interpreter.ts'
-import { Value, NumeroValue, ObjectValue, FunctionValue } from '../values.ts'
+import {
+  Value,
+  NumeroValue,
+  ObjectValue,
+  FunctionValue,
+  ValuesType,
+} from '../values.ts'
 import { typeToValuesType } from './statements.ts'
 
 export function evaluate_object_literal(
@@ -49,6 +55,7 @@ export function evaluate_function_literal(
           type: typeToValuesType(param.typeAnnotation.name),
         }
       }),
+      returnType: typeToValuesType(ast.returnType.name),
       declarationEnv: env,
     },
   }
@@ -72,14 +79,36 @@ export function evaluate_member_expression(
   return value
 }
 
-function _evaluate_function_block(body: Node[], env: Environment): Value {
+function _evaluate_function_block(
+  body: Node[],
+  returnType: ValuesType,
+  env: Environment
+): Value {
   for (const statement of body) {
     evaluate(statement, env)
     if (env.returnValue) {
+      if (env.returnValue.type !== returnType) {
+        return error.printError(
+          ErrorType.TypeError,
+          `Se esperaba un ${returnType} pero se encontró ${env.returnValue.type}`,
+          statement.start,
+          statement.end
+        )
+      }
       return env.returnValue
     }
   }
-  return { type: 'nulo', value: null }
+
+  if (returnType === 'nulo') {
+    return { type: 'nulo', value: null }
+  }
+
+  return error.printError(
+    ErrorType.TypeError,
+    `Se esperaba un ${returnType} pero no devolvió ningún valor.`,
+    body[0].start,
+    body[body.length - 1].end
+  )
 }
 export function evaluate_call_expression(
   ast: CallExpression,
@@ -98,6 +127,7 @@ export function evaluate_call_expression(
     const funcValue = func.value
     const declarationEnv = funcValue.declarationEnv
     const body = funcValue.body
+    const returnType = funcValue.returnType
 
     const newEnv = new Environment('function_block', declarationEnv)
 
@@ -132,7 +162,7 @@ export function evaluate_call_expression(
       )
     }
 
-    return _evaluate_function_block(body, newEnv)
+    return _evaluate_function_block(body, returnType, newEnv)
   }
 
   return error.printError(

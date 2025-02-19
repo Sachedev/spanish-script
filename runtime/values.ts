@@ -30,6 +30,7 @@ export interface NativeFunctionValue {
 export interface FunctionProperties {
   params: { name: string; type: ValuesType }[]
   declarationEnv: Environment
+  returnType: ValuesType
   body: Node[]
 }
 export interface FunctionValue {

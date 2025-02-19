@@ -1,7 +1,7 @@
 # SpanishScript
 
 SpanishScript es un lenguaje de programación de scripting muy simple y básico, este permite la creación de scripts muy sencillos. No está pensado para el uso en producción, pero sí para la creación de scripts de demostración.
-Uno de los principales objetivos es su uso educativo en el curso de programación en español. La gran mayoría de lenguajes de programación esten hechos en inglés, por lo que puede ser difícil de entender para aquellos que no están familiarizados con el idioma.
+Uno de los principales objetivos es su uso educativo en el curso de programación en español. La gran mayoría de lenguajes de programación están hechos en inglés, por lo que puede ser difícil de entender para aquellos que no están familiarizados con el idioma.
 
 ## Objetivos
 
@@ -17,9 +17,12 @@ Uno de los principales objetivos es su uso educativo en el curso de programació
 Existen las variables, cuyo valor puede ser cambiado a lo largo del script, y las constantes, que no pueden ser cambiadas.
 
 ```es
-const a = 10; // constante
-var b = 20; // variable
-var Numero c; // variable sin valor inicial
+var var_1 = 1;
+Numero var_2 = 2;
+Numero var_3;
+
+const const_1 = 1;
+const Texto const_2 = "Hola Mundo";
 ```
 
 ### Operadores
@@ -31,8 +34,9 @@ Existen los siguientes operadores:
 - `*`: Multiplicación
 - `/`: División
 - `%`: Resto de la división
-- `++`: Incrementar
-- `--`: Decrementar
+- `^`: Exponenciación
+- `++`: Incrementar (no implementado)
+- `--`: Decrementar (no implementado)
 - `==`: Igualdad
 - `!=`: No igualdad
 - `<`: Menor que
@@ -45,9 +49,13 @@ Existen los siguientes operadores:
 Las funciones son bloques de código que pueden ser llamadas en el script. Las funciones pueden recibir parámetros y devolver un valor.
 
 ```es
-fun suma(Numero a, Numero b) {
+fun suma(a: Numero, b: Numero): Numero { // <-- función
   devolver a + b;
 }
+
+const suma = fun (a: Numero, b: Numero): Numero { // <-- función
+  devolver a + b;
+};
 ```
 
 ### Condicionales
@@ -99,8 +107,8 @@ Las funciones nativas son funciones que vienen incorporadas en el lenguaje. Esta
 Sirve para imprimir en la consola el valor de una variable o una expresión.
 
 ```es
-imprimir(numero); // Imprime el valor de numero
-imprimir(a + b); // Imprime el valor de a + b
+imprimir(numero) // Imprime el valor de numero
+imprimir(a + b) // Imprime el valor de a + b
 ```
 
 #### tipo_de
@@ -108,9 +116,9 @@ imprimir(a + b); // Imprime el valor de a + b
 Sirve para obtener el tipo de una variable o una expresión. Devuelve un string con el tipo de la variable o expresión.
 
 ```es
-tipo_de(10); // Devuelve "Numero"
-tipo_de("Hola"); // Devuelve "Texto"
-tipo_de(verdadero); // Devuelve "Booleano"
+tipo_de(10) // Devuelve "Numero"
+tipo_de('Hola') // Devuelve "Texto"
+tipo_de(verdadero) // Devuelve "Booleano"
 ```
 
 #### Conversoras de Tipo
@@ -118,9 +126,9 @@ tipo_de(verdadero); // Devuelve "Booleano"
 Convierten un valor de un tipo a otro.
 
 ```es
-Numero("10"); // 10
-Texto(10); // "10"
-Booleano(10); // verdadero
+Numero('10') // 10
+Texto(10) // "10"
+Booleano(10) // verdadero
 ```
 
 ### Tipos de Datos
